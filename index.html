@@ -132,7 +132,7 @@
             setOpcoesFrete(formatados);
             if (formatados.length > 0) setFreteSelecionado(formatados[0]);
           } else {
-            alert("Erro ao consultar os Correios para este CEP.");
+            alert("Erro ao consultar o frete para este CEP.");
           }
         } catch (erro) {
           console.error("Erro frete:", erro);
@@ -341,7 +341,7 @@
                                 disabled={calculandoFrete}
                                 className="w-full py-2 bg-[#8C6740] text-white rounded-xl font-bold text-xs hover:bg-[#725232] transition"
                               >
-                                {calculandoFrete ? "Calculando Correios..." : "Consultar Frete (Correios)"}
+                                {calculandoFrete ? "Calculando frete..." : "Consultar Frete"}
                               </button>
 
                               {opcoesFrete.length > 0 && (
