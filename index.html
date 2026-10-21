@@ -60,7 +60,7 @@
       const [cepDestino, setCepDestino] = useState('');
       const [tipoEntrega, setTipoEntrega] = useState('local'); // 'local' ou 'correios'
       const [opcoesFrete, setOpcoesFrete] = useState([]);
-      const [freteSelecionado, setFreteSelecionado] = useState({ nome: 'Retirada no Ateliê', valor: 0.00, prazo: 'Grátis' });
+      const [freteSelecionado, setFreteSelecionado] = useState({ nome: 'Retirada na loja', valor: 0.00, prazo: 'Grátis' });
 
       const URL_DO_APPS_SCRIPT = "SEU_URL_DO_APPS_SCRIPT_AQUI";
 
@@ -96,7 +96,7 @@
           if (verificarSeEhItapetininga(limpo)) {
             setTipoEntrega('local');
             setOpcoesFrete([]);
-            setFreteSelecionado({ nome: 'Retirada no Ateliê', valor: 0.00, prazo: 'Grátis' });
+            setFreteSelecionado({ nome: 'Retirada na loja', valor: 0.00, prazo: 'Grátis' });
           } else {
             setTipoEntrega('correios');
           }
@@ -221,7 +221,6 @@
               </div>
               <div>
                 <h1 className="text-2xl font-extrabold tracking-wide">JV Gifts Personalizados</h1>
-                <p className="text-xs text-[#EBE3D5] font-medium mt-0.5">Ateliê de Memória Afetiva • Itapetininga/SP</p>
               </div>
             </div>
           </header>
@@ -320,17 +319,17 @@
                               <div className="flex gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => setFreteSelecionado({ nome: 'Retirada no Ateliê', valor: 0.00, prazo: 'Grátis' })}
+                                  onClick={() => setFreteSelecionado({ nome: 'Retirada na loja', valor: 0.00, prazo: 'Grátis' })}
                                   className={`flex-1 p-2 rounded-lg border text-center transition ${freteSelecionado.nome.includes('Retirada') ? 'bg-[#B89267] text-white font-bold' : 'bg-white text-stone-700'}`}
                                 >
                                   Retirada (Grátis)
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => setFreteSelecionado({ nome: 'Entrega Local (Motoboy)', valor: 10.00, prazo: 'A combinar' })}
-                                  className={`flex-1 p-2 rounded-lg border text-center transition ${freteSelecionado.nome.includes('Motoboy') ? 'bg-[#B89267] text-white font-bold' : 'bg-white text-stone-700'}`}
+                                  onClick={() => setFreteSelecionado({ nome: 'Entrega Local', valor: 10.00, prazo: 'A combinar' })}
+                                  className={`flex-1 p-2 rounded-lg border text-center transition ${freteSelecionado.nome.includes('Entrega') ? 'bg-[#B89267] text-white font-bold' : 'bg-white text-stone-700'}`}
                                 >
-                                  Motoboy (R$ 10,00)
+                                  Entrega (R$ 10,00)
                                 </button>
                               </div>
                             </div>
