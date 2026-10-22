@@ -159,7 +159,7 @@
           kit: `${kitAtual.nome} (${kitAtual.qtd} unidades)`,
           qtdFotos: kitAtual.qtd,
           valorTotal: valorTotalGeral,
-          freteInfo: `${freteSelecionado.nome} R$ ${freteSelecionado.valor.toFixed(2)}`,
+          freteInfo: `${freteSelecionado.nome} - R$ ${freteSelecionado.valor.toFixed(2)}`,
           whatsapp: clienteWhats
         };
 
@@ -215,9 +215,9 @@
       return (
         <div className="min-h-screen flex flex-col justify-between">
           <header className="bg-gradient-to-r from-[#B89267] via-[#A88258] to-[#8C6740] text-white shadow-md">
-            <div className="max-w-4xl mx-auto px-4 py-4 flex items-center space-x-4">
-              <div className="bg-white p-1 rounded-full shadow-md w-14 h-14 border-2 border-white/40 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                <img src="./logo.jpg" alt="Logo JV Gifts" className="w-full h-full object-cover rounded-full" />
+            <div className="max-w-4xl mx-auto px-4 py-4 flex items-center space-x-5">
+              <div className="bg-[#EFEAE2] p-1.5 rounded-2xl shadow-md w-20 h-20 border-2 border-[#D1BD9B] flex-shrink-0">
+                <img src="logo.jpg" alt="Logo" className="w-full h-full object-contain rounded-xl" />
               </div>
               <div>
                 <h1 className="text-2xl font-extrabold tracking-wide">JV Gifts Personalizados</h1>
@@ -341,7 +341,7 @@
                                 disabled={calculandoFrete}
                                 className="w-full py-2 bg-[#8C6740] text-white rounded-xl font-bold text-xs hover:bg-[#725232] transition"
                               >
-                                {calculandoFrete ? "Calculando frete..." : "Consultar Frete (Correios)"}
+                                {calculandoFrete ? "Calculando frete..." : "Consultar Frete"}
                               </button>
 
                               {opcoesFrete.length > 0 && (
