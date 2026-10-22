@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JV Gifts Personalizados - Fazer Pedido</title>
+  <!-- Favicon para a aba do navegador -->
+  <link rel="icon" href="logo.jpg" type="image/jpeg">
   <!-- React & React DOM -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
@@ -215,7 +217,12 @@
       return (
         <div className="min-h-screen flex flex-col justify-between">
           <header className="bg-gradient-to-r from-[#B89267] via-[#A88258] to-[#8C6740] text-white shadow-md">
-            <div className="max-w-4xl mx-auto px-4 py-4">
+            <div className="max-w-4xl mx-auto px-4 py-4 flex items-center space-x-3">
+              <img 
+                src="logo.jpg" 
+                alt="JV Gifts Personalizados Logo" 
+                className="w-10 h-10 rounded-full object-cover border-2 border-white/80 shadow-sm"
+              />
               <h1 className="text-2xl font-extrabold tracking-wide">JV Gifts Personalizados</h1>
             </div>
           </header>
