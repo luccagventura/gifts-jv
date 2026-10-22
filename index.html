@@ -1,122 +1,839 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
+
 <head>
+
   <meta charset="UTF-8">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>JV Gifts Personalizados - Fazer Pedido</title>
-  <!-- Favicon para a aba do navegador -->
-  <link rel="icon" href="logo.jpg" type="image/jpeg">
+
   <!-- React & React DOM -->
+
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
   <!-- Babel compiler -->
+
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
   <!-- Tailwind CSS -->
+
   <script src="https://cdn.tailwindcss.com"></script>
+
   <!-- Fontes Google -->
+
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
+
     body {
+
       font-family: 'Plus Jakarta Sans', sans-serif;
+
     }
+
   </style>
+
 </head>
+
 <body class="bg-[#F8F5F0] text-stone-800 min-h-screen flex flex-col justify-between">
+
+
 
   <div id="root"></div>
 
+
+
   <script type="text/babel">
+
     const { useState } = React;
 
+
+
     const UploadIcon = () => (
+
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+
     );
+
+
 
     const InstagramIcon = () => (
+
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+
     );
+
+
 
     const WhatsappIcon = () => (
+
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+
     );
 
+
+
     function App() {
+
       const [carregando, setCarregando] = useState(false);
+
       const [calculandoFrete, setCalculandoFrete] = useState(false);
 
+
+
       const kits = [
+
         { id: 'tres-quadrado', nome: 'Kit 3 imãs quadrados', qtdPadrao: 3, precoPadrao: 35.00, desc: '3 imãs personalizados', peso: 200 },
+
         { id: 'seis-quadrado', nome: 'Kit 6 imãs quadrados', qtdPadrao: 6, precoPadrao: 68.00, desc: '6 imãs personalizados', peso: 300 },
+
         { id: 'dez-mais-quadrado', nome: 'Kit 10+ imãs quadrados', qtdPadrao: 10, precoPadrao: 100.00, desc: 'A partir de 10 ímãs (R$ 100 base + R$ 10 por extra)', peso: 400 },
+
       ];
 
+
+
       const [clienteNome, setClienteNome] = useState('');
+
       const [clienteWhats, setClienteWhats] = useState('');
+
       const [kitSelecionado, setKitSelecionado] = useState(kits[0].id);
+
       const [qtdCustomizada, setQtdCustomizada] = useState(10);
+
       const [fotosUpload, setFotosUpload] = useState([]);
+
       const [pedidoSucesso, setPedidoSucesso] = useState(null);
+
       const [erroEnvio, setErroEnvio] = useState(false);
 
+
+
       // Estados de Frete
+
       const [cepDestino, setCepDestino] = useState('');
+
       const [tipoEntrega, setTipoEntrega] = useState('local'); // 'local' ou 'correios'
+
       const [opcoesFrete, setOpcoesFrete] = useState([]);
+
       const [freteSelecionado, setFreteSelecionado] = useState({ nome: 'Retirada na loja', valor: 0.00, prazo: 'Grátis' });
+
+
 
       const URL_DO_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbzIsGyzzoRPBsbyjYk0kKEAx0bQhP3_eXigJ1d1eNZWB6JoRAhbLUMM8sryJRy2wgmV/exec";
 
+
+
       const obterDadosCalculados = () => {
+
         const kitObj = kits.find(k => k.id === kitSelecionado);
+
         if (kitSelecionado === 'dez-mais-quadrado') {
+
           const qtd = Math.max(10, parseInt(qtdCustomizada) || 10);
+
           const preco = 100.00 + (qtd - 10) * 10.00;
+
           const peso = 300 + (qtd - 10) * 20;
+
           return { ...kitObj, qtd, preco, peso };
+
         }
+
         return { ...kitObj, qtd: kitObj.qtdPadrao, preco: kitObj.precoPadrao, peso: kitObj.peso };
+
       };
+
+
 
       const kitAtual = obterDadosCalculados();
+
       const quantidadeFotosValida = fotosUpload.length === kitAtual.qtd;
+
       const valorTotalGeral = kitAtual.preco + (freteSelecionado.valor || 0);
 
+
+
       // Valida se o CEP pertence a Itapetininga (Faixa 18200 a 18215)
+
       const verificarSeEhItapetininga = (cep) => {
+
         const apenasNum = cep.replace(/\D/g, '');
+
         if (apenasNum.length !== 8) return false;
+
         const prefixo = parseInt(apenasNum.substring(0, 5), 10);
+
         return prefixo >= 18200 && prefixo <= 18215;
+
       };
+
+
 
       const handleCEPChange = (e) => {
+
         const novoCep = e.target.value;
+
         setCepDestino(novoCep);
 
+
+
         const limpo = novoCep.replace(/\D/g, '');
+
         if (limpo.length === 8) {
+
           if (verificarSeEhItapetininga(limpo)) {
+
             setTipoEntrega('local');
+
             setOpcoesFrete([]);
+
             setFreteSelecionado({ nome: 'Retirada na loja', valor: 0.00, prazo: 'Grátis' });
+
           } else {
+
             setTipoEntrega('correios');
+
           }
+
         }
+
       };
 
+
+
       const handleCalcularFreteCorreios = async () => {
+
         const limpo = cepDestino.replace(/\D/g, '');
+
         if (limpo.length < 8) {
+
           alert("Digite um CEP válido.");
+
           return;
+
         }
 
+
+
         setCalculandoFrete(true);
+
         try {
+
           const resposta = await fetch(URL_DO_APPS_SCRIPT, {
+
             method: "POST",
+
             headers: { "Content-Type": "text/plain;charset=utf-8" },
+
             body: JSON.stringify({
+
               acao: "calcularFrete",
+
               cepDestino: limpo,
+
+              pesoGramas: kitAtual.peso
+
+            })
+
+          });
+
+
+
+          const dados = await resposta.json();
+
+          if (Array.isArray(dados)) {
+
+            const formatados = dados.map(servico => ({
+
+              nome: servico.name,
+
+              valor: parseFloat(servico.price),
+
+              prazo: `${servico.delivery_time} dias úteis`
+
+            }));
+
+            setOpcoesFrete(formatados);
+
+            if (formatados.length > 0) setFreteSelecionado(formatados[0]);
+
+          } else {
+
+            alert("Erro ao consultar o frete para este CEP.");
+
+          }
+
+        } catch (erro) {
+
+          console.error("Erro frete:", erro);
+
+          alert("Falha ao calcular o frete.");
+
+        } finally {
+
+          setCalculandoFrete(false);
+
+        }
+
+      };
+
+
+
+      const handleEnviarPedido = async (e) => {
+
+        e.preventDefault();
+
+        if (!quantidadeFotosValida) {
+
+          alert(`Por favor, selecione exatamente ${kitAtual.qtd} foto(s).`);
+
+          return;
+
+        }
+
+
+
+        setCarregando(true);
+
+        setErroEnvio(false);
+
+        const novoId = `PED-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        
+
+        const novoPedido = {
+
+          id: novoId,
+
+          cliente: clienteNome,
+
+          kit: `${kitAtual.nome} (${kitAtual.qtd} unidades)`,
+
+          qtdFotos: kitAtual.qtd,
+
+          valorTotal: valorTotalGeral,
+
+          freteInfo: `${freteSelecionado.nome} R$ ${freteSelecionado.valor.toFixed(2)}`,
+
+          whatsapp: clienteWhats
+
+        };
+
+
+
+        try {
+
+          const fotosProcessadas = [];
+
+          for (let i = 0; i < fotosUpload.length; i++) {
+
+            const base64String = await toBase64(fotosUpload[i]);
+
+            fotosProcessadas.push({
+
+              nome: fotosUpload[i].name,
+
+              tipo: fotosUpload[i].type,
+
+              dados: base64String
+
+            });
+
+          }
+
+
+
+          const payload = {
+
+            idPedido: novoId,
+
+            nomeCliente: clienteNome,
+
+            whatsapp: clienteWhats,
+
+            kit: novoPedido.kit,
+
+            valorTotal: valorTotalGeral,
+
+            freteInfo: novoPedido.freteInfo,
+
+            fotos: fotosProcessadas
+
+          };
+
+
+
+          const resposta = await fetch(URL_DO_APPS_SCRIPT, {
+
+            method: "POST",
+
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+
+            body: JSON.stringify(payload)
+
+          });
+
+
+
+          if (!resposta.ok) throw new Error("Erro");
+
+
+
+          setPedidoSucesso(novoPedido);
+
+          setClienteNome('');
+
+          setClienteWhats('');
+
+          setFotosUpload([]);
+
+        } catch (erro) {
+
+          console.error("Erro:", erro);
+
+          setErroEnvio(true);
+
+          setPedidoSucesso(novoPedido);
+
+        } finally {
+
+          setCarregando(false);
+
+        }
+
+      };
+
+
+
+      const toBase64 = (file) => new Promise((resolve, reject) => {
+
+        const reader = new FileReader();
+
+        reader.readAsDataURL(file);
+
+        reader.onload = () => resolve(reader.result);
+
+        reader.onerror = error => reject(error);
+
+      });
+
+
+
+      return (
+
+        <div className="min-h-screen flex flex-col justify-between">
+
+          <header className="bg-gradient-to-r from-[#B89267] via-[#A88258] to-[#8C6740] text-white shadow-md">
+
+            <div className="max-w-4xl mx-auto px-4 py-4">
+
+              <h1 className="text-2xl font-extrabold tracking-wide">JV Gifts Personalizados</h1>
+
+            </div>
+
+          </header>
+
+
+
+          <main className="max-w-4xl mx-auto px-4 py-8 flex-grow w-full">
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+              
+
+              <div className="md:col-span-2 space-y-6">
+
+                <h2 className="text-2xl font-bold text-[#4A3B2C]">Escolha o seu Kit de Foto-Ímãs</h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                  {kits.map((k) => {
+
+                    const estaSelecionado = kitSelecionado === k.id;
+
+                    const ehDezMais = k.id === 'dez-mais-quadrado';
+
+                    return (
+
+                      <div
+
+                        key={k.id}
+
+                        onClick={() => setKitSelecionado(k.id)}
+
+                        className={`cursor-pointer rounded-2xl p-5 border-2 transition-all relative ${ehDezMais ? 'sm:col-span-2' : ''} ${
+
+                          estaSelecionado ? 'border-[#B89267] bg-[#F4EFEA] shadow-sm ring-1 ring-[#D8C2A8]' : 'border-stone-200 bg-white hover:border-stone-300'
+
+                        }`}
+
+                      >
+
+                        {estaSelecionado && <span className="absolute top-3 right-3 bg-[#B89267] text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase">Selecionado</span>}
+
+                        <h3 className="font-bold text-[#3D3023] text-lg">{k.nome}</h3>
+
+                        <p className="text-xs text-stone-500 mt-1">{k.desc}</p>
+
+                        {ehDezMais && estaSelecionado ? (
+
+                          <div className="mt-4 pt-3 border-t border-[#D8C2A8]/60" onClick={(e) => e.stopPropagation()}>
+
+                            <label className="block text-xs font-bold text-[#4A3B2C] mb-1">Quantidade de ímãs:</label>
+
+                            <input type="number" min="10" value={qtdCustomizada} onChange={(e) => setQtdCustomizada(e.target.value)} className="w-full px-3 py-1.5 rounded-lg border border-[#C5B097] text-sm font-bold bg-white" />
+
+                            <div className="mt-2 flex justify-between items-baseline">
+
+                              <span className="text-xs font-semibold text-[#8C6740]">{kitAtual.qtd} ímãs</span>
+
+                              <span className="text-xl font-extrabold text-[#3D3023]">R$ {kitAtual.preco.toFixed(2)}</span>
+
+                            </div>
+
+                          </div>
+
+                        ) : (
+
+                          <div className="mt-4 flex justify-between items-baseline">
+
+                            <span className="text-xs font-medium text-[#8C6740] bg-[#ECE5DB] px-2.5 py-1 rounded-lg">{k.qtdPadrao} fotos</span>
+
+                            <span className="text-xl font-extrabold text-[#3D3023]">R$ {k.precoPadrao.toFixed(2)}</span>
+
+                          </div>
+
+                        )}
+
+                      </div>
+
+                    );
+
+                  })}
+
+                </div>
+
+              </div>
+
+
+
+              {/* FORMULÁRIO */}
+
+              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-5">
+
+                <h3 className="text-lg font-bold text-[#3D3023] border-b border-stone-100 pb-3">Dados & Frete</h3>
+
+
+
+                {pedidoSucesso ? (
+
+                  <div className="bg-[#FAF8F5] border border-[#D8C2A8] rounded-2xl p-5 text-center space-y-4 shadow-sm">
+
+                    <h4 className="font-bold text-[#3D3023] text-base">Pedido Registado com Sucesso!</h4>
+
+                    <p className="text-xs text-stone-500">
+
+                      Código: <strong className="text-stone-800">{pedidoSucesso.id}</strong><br />
+
+                      Total: <strong className="text-[#8C6740]">R$ {pedidoSucesso.valorTotal.toFixed(2)}</strong> ({pedidoSucesso.freteInfo})
+
+                    </p>
+
+                    <a
+
+                      href={`https://wa.me/5513997018999?text=${encodeURIComponent(`Olá! Fiz o pedido ${pedidoSucesso.id} no valor de R$ ${pedidoSucesso.valorTotal.toFixed(2)} (${pedidoSucesso.freteInfo}). Poderia me enviar o link de pagamento do Nubank?`)}`}
+
+                      target="_blank"
+
+                      rel="noreferrer"
+
+                      className="inline-block w-full py-3.5 bg-[#B89267] text-white rounded-xl font-bold text-xs hover:bg-[#A37B50] transition shadow-sm"
+
+                    >
+
+                      Solicitar Link de Pagamento (Nubank)
+
+                    </a>
+
+                  </div>
+
+                ) : (
+
+                  <form onSubmit={handleEnviarPedido} className="space-y-4">
+
+                    <div>
+
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">Nome Completo</label>
+
+                      <input type="text" required placeholder="Ex: Ana Souza" value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#B89267]" />
+
+                    </div>
+
+
+
+                    <div>
+
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">WhatsApp de Contato</label>
+
+                      <input type="tel" required placeholder="(15) 99999-9999" value={clienteWhats} onChange={(e) => setClienteWhats(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#B89267]" />
+
+                    </div>
+
+
+
+                    {/* CAMPO DE CEP E LÓGICA CONDICIONAL DE FRETE */}
+
+                    <div>
+
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">CEP de Destino</label>
+
+                      <input
+
+                        type="text"
+
+                        maxLength="9"
+
+                        required
+
+                        placeholder="Ex: 18200-000"
+
+                        value={cepDestino}
+
+                        onChange={handleCEPChange}
+
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#B89267]"
+
+                      />
+
+
+
+                      {cepDestino.replace(/\D/g, '').length === 8 && (
+
+                        <div className="mt-2.5">
+
+                          {tipoEntrega === 'local' ? (
+
+                            <div className="bg-[#F4EFEA] border border-[#D8C2A8] p-3 rounded-xl text-xs space-y-2">
+
+                              <p className="font-bold text-[#3D3023]">📍 Itapetininga/SP (Entrega local)</p>
+
+                              <div className="flex gap-2">
+
+                                <button
+
+                                  type="button"
+
+                                  onClick={() => setFreteSelecionado({ nome: 'Retirada na loja', valor: 0.00, prazo: 'Grátis' })}
+
+                                  className={`flex-1 p-2 rounded-lg border text-center transition ${freteSelecionado.nome.includes('Retirada') ? 'bg-[#B89267] text-white font-bold' : 'bg-white text-stone-700'}`}
+
+                                >
+
+                                  Retirada (Grátis)
+
+                                </button>
+
+                                <button
+
+                                  type="button"
+
+                                  onClick={() => setFreteSelecionado({ nome: 'Entrega Local', valor: 10.00, prazo: 'A combinar' })}
+
+                                  className={`flex-1 p-2 rounded-lg border text-center transition ${freteSelecionado.nome.includes('Entrega') ? 'bg-[#B89267] text-white font-bold' : 'bg-white text-stone-700'}`}
+
+                                >
+
+                                  Entrega (R$ 10,00)
+
+                                </button>
+
+                              </div>
+
+                            </div>
+
+                          ) : (
+
+                            <div className="space-y-2 pt-1">
+
+                              <button
+
+                                type="button"
+
+                                onClick={handleCalcularFreteCorreios}
+
+                                disabled={calculandoFrete}
+
+                                className="w-full py-2 bg-[#8C6740] text-white rounded-xl font-bold text-xs hover:bg-[#725232] transition"
+
+                              >
+
+                                {calculandoFrete ? "Calculando frete..." : "Consultar Frete (Correios)"}
+
+                              </button>
+
+
+
+                              {opcoesFrete.length > 0 && (
+
+                                <div className="space-y-1.5">
+
+                                  {opcoesFrete.map((op, idx) => (
+
+                                    <div
+
+                                      key={idx}
+
+                                      onClick={() => setFreteSelecionado(op)}
+
+                                      className={`p-2.5 rounded-xl border text-xs cursor-pointer flex justify-between items-center transition ${
+
+                                        freteSelecionado.nome === op.nome ? 'border-[#B89267] bg-[#F4EFEA] font-bold' : 'border-stone-200 bg-white'
+
+                                      }`}
+
+                                    >
+
+                                      <span>{op.nome} ({op.prazo})</span>
+
+                                      <span className="font-extrabold text-[#8C6740]">R$ {op.valor.toFixed(2)}</span>
+
+                                    </div>
+
+                                  ))}
+
+                                </div>
+
+                              )}
+
+                            </div>
+
+                          )}
+
+                        </div>
+
+                      )}
+
+                    </div>
+
+
+
+                    <div>
+
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">
+
+                        Selecione as Fotos ({kitAtual.qtd} necessárias)
+
+                      </label>
+
+                      <div className="border-2 border-dashed border-[#D8C2A8] bg-[#FAF8F5] rounded-2xl p-4 text-center relative cursor-pointer">
+
+                        <input type="file" multiple required accept="image/*" onChange={(e) => setFotosUpload(Array.from(e.target.files))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+
+                        <div className="text-[#B89267] mx-auto w-8 h-8 mb-1 flex justify-center items-center"><UploadIcon /></div>
+
+                        <span className="text-xs text-stone-700 font-medium block">Clique para carregar imagens</span>
+
+                      </div>
+
+                      {fotosUpload.length > 0 && (
+
+                        <div className={`mt-2 text-[11px] font-semibold ${quantidadeFotosValida ? 'text-emerald-700' : 'text-amber-700'}`}>
+
+                          {quantidadeFotosValida ? `✓ ${fotosUpload.length} foto(s) selecionada(s)` : `⚠ Selecione exatamente ${kitAtual.qtd} fotos.`}
+
+                        </div>
+
+                      )}
+
+                    </div>
+
+
+
+                    <div className="bg-[#FAF8F5] p-3 rounded-xl border border-[#E8DFC8] space-y-1 text-xs">
+
+                      <div className="flex justify-between text-stone-600"><span>Kit de Ímãs:</span><span>R$ {kitAtual.preco.toFixed(2)}</span></div>
+
+                      <div className="flex justify-between text-stone-600"><span>Frete ({freteSelecionado.nome}):</span><span>R$ {(freteSelecionado.valor || 0).toFixed(2)}</span></div>
+
+                      <div className="flex justify-between items-center border-t border-stone-200 pt-2 font-extrabold text-sm text-[#8C6740]">
+
+                        <span>Total Geral:</span>
+
+                        <span>R$ {valorTotalGeral.toFixed(2)}</span>
+
+                      </div>
+
+                    </div>
+
+
+
+                    <button
+
+                      type="submit"
+
+                      disabled={carregando || !quantidadeFotosValida}
+
+                      className={`w-full py-3.5 rounded-xl font-bold text-sm shadow-md transition ${
+
+                        carregando || !quantidadeFotosValida ? 'bg-stone-200 text-stone-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#B89267] to-[#8C6740] text-white hover:opacity-95'
+
+                      }`}
+
+                    >
+
+                      {carregando ? "A enviar..." : "Concluir Pedido"}
+
+                    </button>
+
+                  </form>
+
+                )}
+
+              </div>
+
+
+
+            </div>
+
+          </main>
+
+
+
+          <footer className="bg-white border-t border-stone-200 py-6 text-center text-xs text-stone-500 space-y-3">
+
+            <div className="flex justify-center items-center space-x-4">
+
+              <a href="https://www.instagram.com/gifts.jv" target="_blank" rel="noreferrer" className="w-9 h-9 bg-[#F4EFEA] hover:bg-[#EAE0D5] text-[#8C6740] rounded-full flex items-center justify-center transition"><InstagramIcon /></a>
+
+              <a href="https://wa.me/5513997018999" target="_blank" rel="noreferrer" className="w-9 h-9 bg-[#F4EFEA] hover:bg-[#EAE0D5] text-[#8C6740] rounded-full flex items-center justify-center transition"><WhatsappIcon /></a>
+
+            </div>
+
+            <p className="font-medium text-stone-600">JV Gifts Personalizados • Itapetininga/SP</p>
+
+          </footer>
+
+        </div>
+
+      );
+
+    }
+
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+
+    root.render(<App />);
+
+  </script>
+
+</body>
+
+</html> 
