@@ -42,16 +42,25 @@
       const [carregando, setCarregando] = useState(false);
       const [calculandoFrete, setCalculandoFrete] = useState(false);
 
-      const kits = [
-        { id: 'tres-quadrado', nome: 'Kit 3 imãs quadrados', qtdPadrao: 3, precoPadrao: 35.00, desc: '3 imãs personalizados', peso: 200 },
-        { id: 'seis-quadrado', nome: 'Kit 6 imãs quadrados', qtdPadrao: 6, precoPadrao: 68.00, desc: '6 imãs personalizados', peso: 300 },
-        { id: 'dez-mais-quadrado', nome: 'Kit 10+ imãs quadrados', qtdPadrao: 10, precoPadrao: 100.00, desc: 'A partir de 10 ímãs (R$ 100 base + R$ 10 por extra)', peso: 400 },
+      const produtos = [
+        // KITS E ÍMÃS QUADRADOS
+        { id: 'um-ima', nome: 'Ímã Quadrado (Unidade)', categoria: 'Kits e Ímãs', qtdPadrao: 1, precoPadrao: 12.00, desc: 'Ímã quadrado personalizado (50mm)', peso: 100 },
+        { id: 'tres-quadrado', nome: 'Kit 3 ímãs quadrados', categoria: 'Kits e Ímãs', qtdPadrao: 3, precoPadrao: 35.00, desc: '3 ímãs quadrados personalizados (50mm)', peso: 200 },
+        { id: 'seis-quadrado', nome: 'Kit 6 ímãs quadrados', categoria: 'Kits e Ímãs', qtdPadrao: 6, precoPadrao: 68.00, desc: '6 ímãs quadrados personalizados (50mm)', peso: 300 },
+        { id: 'dez-mais-quadrado', nome: 'Kit 10+ ímãs quadrados', categoria: 'Kits e Ímãs', qtdPadrao: 10, precoPadrao: 100.00, desc: 'A partir de 10 ímãs quadrados (50mm) (R$ 10,00 por unidade)', peso: 400 },
+        
+        // DEMAIS PRODUTOS PERSONALIZADOS
+        { id: 'ima-redondo', nome: 'Ímã Redondo (Unidade)', categoria: 'Outros Produtos', qtdPadrao: 1, precoPadrao: 11.00, desc: 'Ímã redondo personalizado (58mm)', peso: 80 },
+        { id: 'botton', nome: 'Botton Personalizado', categoria: 'Outros Produtos', qtdPadrao: 1, precoPadrao: 8.00, desc: 'Botton personalizado com alfinete (58mm)', peso: 50 },
+        { id: 'chaveiro', nome: 'Chaveiro Personalizado', categoria: 'Outros Produtos', qtdPadrao: 1, precoPadrao: 9.00, desc: 'Chaveiro personalizado com foto/frase (58mm)', peso: 60 },
+        { id: 'espelho', nome: 'Espelho de Bolsa', categoria: 'Outros Produtos', qtdPadrao: 1, precoPadrao: 10.00, desc: 'Espelho de bolso personalizado (58mm)', peso: 80 },
       ];
 
       const [clienteNome, setClienteNome] = useState('');
       const [clienteWhats, setClienteWhats] = useState('');
-      const [kitSelecionado, setKitSelecionado] = useState(kits[0].id);
+      const [produtoSelecionado, setProdutoSelecionado] = useState(produtos[1].id);
       const [qtdCustomizada, setQtdCustomizada] = useState(10);
+      const [qtdIndividual, setQtdIndividual] = useState(1);
       const [fotosUpload, setFotosUpload] = useState([]);
       const [usarMesmaFoto, setUsarMesmaFoto] = useState(false);
       const [pedidoSucesso, setPedidoSucesso] = useState(null);
@@ -59,7 +68,7 @@
 
       // Estados de Frete e Endereço
       const [cepDestino, setCepDestino] = useState('');
-      const [tipoEntrega, setTipoEntrega] = useState('local'); // 'local' ou 'correios'
+      const [tipoEntrega, setTipoEntrega] = useState('local');
       const [opcoesFrete, setOpcoesFrete] = useState([]);
       const [freteSelecionado, setFreteSelecionado] = useState({ nome: 'Retirada na loja', valor: 0.00, prazo: 'Grátis' });
       
@@ -71,25 +80,53 @@
       const URL_DO_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbzIsGyzzoRPBsbyjYk0kKEAx0bQhP3_eXigJ1d1eNZWB6JoRAhbLUMM8sryJRy2wgmV/exec";
 
       const obterDadosCalculados = () => {
-        const kitObj = kits.find(k => k.id === kitSelecionado);
-        if (kitSelecionado === 'dez-mais-quadrado') {
+        const prodObj = produtos.find(p => p.id === produtoSelecionado);
+        if (produtoSelecionado === 'dez-mais-quadrado') {
           const qtd = Math.max(10, parseInt(qtdCustomizada) || 10);
-          const preco = 100.00 + (qtd - 10) * 10.00;
+          const preco = qtd * 10.00;
           const peso = 300 + (qtd - 10) * 20;
-          return { ...kitObj, qtd, preco, peso };
+          return { ...prodObj, qtd, preco, peso };
         }
-        return { ...kitObj, qtd: kitObj.qtdPadrao, preco: kitObj.precoPadrao, peso: kitObj.peso };
+        if (produtoSelecionado === 'um-ima') {
+          const qtd = Math.max(1, parseInt(qtdIndividual) || 1);
+          const preco = qtd * 12.00;
+          const peso = qtd * 100;
+          return { ...prodObj, qtd, preco, peso };
+        }
+        if (produtoSelecionado === 'ima-redondo') {
+          const qtd = Math.max(1, parseInt(qtdIndividual) || 1);
+          const preco = qtd * 11.00;
+          const peso = qtd * 80;
+          return { ...prodObj, qtd, preco, peso };
+        }
+        if (produtoSelecionado === 'botton') {
+          const qtd = Math.max(1, parseInt(qtdIndividual) || 1);
+          const preco = qtd * 8.00;
+          const peso = qtd * 50;
+          return { ...prodObj, qtd, preco, peso };
+        }
+        if (produtoSelecionado === 'chaveiro') {
+          const qtd = Math.max(1, parseInt(qtdIndividual) || 1);
+          const preco = qtd * 9.00;
+          const peso = qtd * 60;
+          return { ...prodObj, qtd, preco, peso };
+        }
+        if (produtoSelecionado === 'espelho') {
+          const qtd = Math.max(1, parseInt(qtdIndividual) || 1);
+          const preco = qtd * 10.00;
+          const peso = qtd * 80;
+          return { ...prodObj, qtd, preco, peso };
+        }
+        return { ...prodObj, qtd: prodObj.qtdPadrao, preco: prodObj.precoPadrao, peso: prodObj.peso };
       };
 
-      const kitAtual = obterDadosCalculados();
+      const produtoAtual = obterDadosCalculados();
       
-      // Validação de fotos considerando se vai usar a mesma foto para todos
-      const quantidadeFotosValida = usarMesmaFoto ? fotosUpload.length === 1 : fotosUpload.length === kitAtual.qtd;
+      const quantidadeFotosValida = usarMesmaFoto ? fotosUpload.length === 1 : fotosUpload.length === produtoAtual.qtd;
       
-      const valorTotalGeral = kitAtual.preco + (freteSelecionado.valor || 0);
+      const valorTotalGeral = produtoAtual.preco + (freteSelecionado.valor || 0);
       const exigeEndereco = freteSelecionado.nome !== 'Retirada na loja';
 
-      // Valida se o CEP pertence a Itapetininga (Faixa 18200 a 18215)
       const verificarSeEhItapetininga = (cep) => {
         const apenasNum = cep.replace(/\D/g, '');
         if (apenasNum.length !== 8) return false;
@@ -128,7 +165,7 @@
             body: JSON.stringify({
               acao: "calcularFrete",
               cepDestino: limpo,
-              pesoGramas: kitAtual.peso
+              pesoGramas: produtoAtual.peso
             })
           });
 
@@ -156,9 +193,9 @@
         e.preventDefault();
         if (!quantidadeFotosValida) {
           if (usarMesmaFoto) {
-            alert("Por favor, selecione exatamente 1 foto para ser usada em todos os ímãs.");
+            alert("Por favor, selecione exatamente 1 foto para ser usada em todos os itens.");
           } else {
-            alert(`Por favor, selecione exatamente ${kitAtual.qtd} foto(s).`);
+            alert(`Por favor, selecione exatamente ${produtoAtual.qtd} foto(s).`);
           }
           return;
         }
@@ -176,14 +213,14 @@
           ? `${rua.trim()}, Nº ${numero.trim()} - ${bairro.trim()}${complemento ? ' (' + complemento.trim() + ')' : ''} - CEP: ${cepDestino}`
           : 'Retirada no Ateliê (Sem entrega)';
 
-        const kitDescricao = usarMesmaFoto 
-          ? `${kitAtual.nome} (${kitAtual.qtd} unidades - Usar mesma foto)` 
-          : `${kitAtual.nome} (${kitAtual.qtd} unidades)`;
+        const produtoDescricao = usarMesmaFoto 
+          ? `${produtoAtual.nome} (${produtoAtual.qtd} unidade(s) - Usar mesma foto)` 
+          : `${produtoAtual.nome} (${produtoAtual.qtd} unidade(s))`;
 
         const novoPedido = {
           id: novoId,
           cliente: clienteNome,
-          kit: kitDescricao,
+          kit: produtoDescricao,
           qtdFotos: fotosUpload.length,
           valorTotal: valorTotalGeral,
           freteInfo: `${freteSelecionado.nome} (R$ ${freteSelecionado.valor.toFixed(2)})`,
@@ -196,8 +233,7 @@
           
           if (usarMesmaFoto && fotosUpload.length === 1) {
             const base64String = await toBase64(fotosUpload[0]);
-            // Duplica a foto para atender à quantidade de ímãs do kit no backend
-            for (let i = 0; i < kitAtual.qtd; i++) {
+            for (let i = 0; i < produtoAtual.qtd; i++) {
               fotosProcessadas.push({
                 nome: `foto_repetida_${i + 1}_${fotosUpload[0].name}`,
                 tipo: fotosUpload[0].type,
@@ -243,6 +279,7 @@
           setComplemento('');
           setFotosUpload([]);
           setUsarMesmaFoto(false);
+          setQtdIndividual(1);
         } catch (erro) {
           console.error("Erro:", erro);
           setErroEnvio(true);
@@ -276,35 +313,65 @@
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               
               <div className="md:col-span-2 space-y-6">
-                <h2 className="text-2xl font-bold text-[#4A3B2C]">Escolha o seu Kit de Foto-Ímãs</h2>
+                <h2 className="text-2xl font-bold text-[#4A3B2C]">Escolha o seu Produto Personalizado</h2>
+                
+                {/* GRELHA ALINHADA DE 2 COLUNAS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {kits.map((k) => {
-                    const estaSelecionado = kitSelecionado === k.id;
-                    const ehDezMais = k.id === 'dez-mais-quadrado';
+                  {produtos.map((p) => {
+                    const estaSelecionado = produtoSelecionado === p.id;
+                    const ehDezMais = p.id === 'dez-mais-quadrado';
+                    const ehIndividualVariavel = ['um-ima', 'ima-redondo', 'botton', 'chaveiro', 'espelho'].includes(p.id);
+
                     return (
                       <div
-                        key={k.id}
-                        onClick={() => setKitSelecionado(k.id)}
-                        className={`cursor-pointer rounded-2xl p-5 border-2 transition-all relative ${ehDezMais ? 'sm:col-span-2' : ''} ${
+                        key={p.id}
+                        onClick={() => setProdutoSelecionado(p.id)}
+                        className={`cursor-pointer rounded-2xl p-5 border-2 transition-all relative flex flex-col justify-between ${
                           estaSelecionado ? 'border-[#B89267] bg-[#F4EFEA] shadow-sm ring-1 ring-[#D8C2A8]' : 'border-stone-200 bg-white hover:border-stone-300'
                         }`}
                       >
                         {estaSelecionado && <span className="absolute top-3 right-3 bg-[#B89267] text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase">Selecionado</span>}
-                        <h3 className="font-bold text-[#3D3023] text-lg">{k.nome}</h3>
-                        <p className="text-xs text-stone-500 mt-1">{k.desc}</p>
+                        <div>
+                          <h3 className="font-bold text-[#3D3023] text-lg pr-16">{p.nome}</h3>
+                          <p className="text-xs text-stone-500 mt-1">{p.desc}</p>
+                        </div>
+                        
                         {ehDezMais && estaSelecionado ? (
                           <div className="mt-4 pt-3 border-t border-[#D8C2A8]/60" onClick={(e) => e.stopPropagation()}>
                             <label className="block text-xs font-bold text-[#4A3B2C] mb-1">Quantidade de ímãs:</label>
-                            <input type="number" min="10" value={qtdCustomizada} onChange={(e) => setQtdCustomizada(e.target.value)} className="w-full px-3 py-1.5 rounded-lg border border-[#C5B097] text-sm font-bold bg-white" />
+                            <input 
+                              type="number" 
+                              min="10" 
+                              value={qtdCustomizada} 
+                              onChange={(e) => setQtdCustomizada(e.target.value)} 
+                              className="w-full px-3 py-1.5 rounded-lg border border-[#C5B097] text-sm font-bold bg-white" 
+                            />
                             <div className="mt-2 flex justify-between items-baseline">
-                              <span className="text-xs font-semibold text-[#8C6740]">{kitAtual.qtd} ímãs</span>
-                              <span className="text-xl font-extrabold text-[#3D3023]">R$ {kitAtual.preco.toFixed(2)}</span>
+                              <span className="text-xs font-semibold text-[#8C6740]">{produtoAtual.qtd} ímãs</span>
+                              <span className="text-xl font-extrabold text-[#3D3023]">R$ {produtoAtual.preco.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        ) : ehIndividualVariavel && estaSelecionado ? (
+                          <div className="mt-4 pt-3 border-t border-[#D8C2A8]/60" onClick={(e) => e.stopPropagation()}>
+                            <label className="block text-xs font-bold text-[#4A3B2C] mb-1">Quantidade:</label>
+                            <input 
+                              type="number" 
+                              min="1" 
+                              value={qtdIndividual} 
+                              onChange={(e) => setQtdIndividual(e.target.value)} 
+                              className="w-full px-3 py-1.5 rounded-lg border border-[#C5B097] text-sm font-bold bg-white" 
+                            />
+                            <div className="mt-2 flex justify-between items-baseline">
+                              <span className="text-xs font-semibold text-[#8C6740]">{produtoAtual.qtd} unidade(s)</span>
+                              <span className="text-xl font-extrabold text-[#3D3023]">R$ {produtoAtual.preco.toFixed(2)}</span>
                             </div>
                           </div>
                         ) : (
                           <div className="mt-4 flex justify-between items-baseline">
-                            <span className="text-xs font-medium text-[#8C6740] bg-[#ECE5DB] px-2.5 py-1 rounded-lg">{k.qtdPadrao} fotos</span>
-                            <span className="text-xl font-extrabold text-[#3D3023]">R$ {k.precoPadrao.toFixed(2)}</span>
+                            <span className="text-xs font-medium text-[#8C6740] bg-[#ECE5DB] px-2.5 py-1 rounded-lg">
+                              {p.qtdPadrao} {p.qtdPadrao === 1 ? 'unidade' : 'fotos'}
+                            </span>
+                            <span className="text-xl font-extrabold text-[#3D3023]">R$ {p.precoPadrao.toFixed(2)}</span>
                           </div>
                         )}
                       </div>
@@ -315,19 +382,20 @@
 
               {/* FORMULÁRIO */}
               <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-5">
-                <h3 className="text-lg font-bold text-[#3D3023] border-b border-stone-100 pb-3">Dados & Frete</h3>
+                <h3 className="text-lg font-bold text-[#3D3023] border-b border-stone-100 pb-3">Dados do Pedido</h3>
 
                 {pedidoSucesso ? (
                   <div className="bg-[#FAF8F5] border border-[#D8C2A8] rounded-2xl p-5 text-center space-y-4 shadow-sm">
                     <h4 className="font-bold text-[#3D3023] text-base">Pedido Registrado com Sucesso!</h4>
                     <div className="text-xs text-stone-600 text-left bg-white p-3 rounded-xl border border-stone-200 space-y-1.5">
                       <p><strong>Código:</strong> <span className="text-stone-800">{pedidoSucesso.id}</span></p>
+                      <p><strong>Produto:</strong> {pedidoSucesso.kit}</p>
                       <p><strong>Opção de Entrega:</strong> {pedidoSucesso.freteInfo}</p>
                       <p><strong>Endereço:</strong> {pedidoSucesso.endereco}</p>
                       <p className="pt-1 border-t border-stone-100"><strong>Total Geral:</strong> <span className="text-[#8C6740] font-bold">R$ {pedidoSucesso.valorTotal.toFixed(2)}</span></p>
                     </div>
                     <a
-                      href={`https://wa.me/5513997018999?text=${encodeURIComponent(`Olá! Fiz o pedido ${pedidoSucesso.id}.\n\n*Cliente:* ${pedidoSucesso.cliente}\n*Kit:* ${pedidoSucesso.kit}\n*Entrega:* ${pedidoSucesso.freteInfo}\n*Endereço:* ${pedidoSucesso.endereco}\n*Total:* R$ ${pedidoSucesso.valorTotal.toFixed(2)}\n\nPoderia me enviar o link de pagamento do Nubank?`)}`}
+                      href={`https://wa.me/5513997018999?text=${encodeURIComponent(`Olá! Fiz o pedido ${pedidoSucesso.id}.\n\n*Cliente:* ${pedidoSucesso.cliente}\n*Produto:* ${pedidoSucesso.kit}\n*Entrega:* ${pedidoSucesso.freteInfo}\n*Endereço:* ${pedidoSucesso.endereco}\n*Total:* R$ ${pedidoSucesso.valorTotal.toFixed(2)}\n\nPoderia me enviar o link de pagamento do Nubank?`)}`}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-block w-full py-3.5 bg-[#B89267] text-white rounded-xl font-bold text-xs hover:bg-[#A37B50] transition shadow-sm"
@@ -412,7 +480,6 @@
                             </div>
                           )}
 
-                          {/* CAMPOS DE ENDEREÇO OBRIGATÓRIOS QUANDO OPTAR POR ENTREGA */}
                           {exigeEndereco && (
                             <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 space-y-2.5 pt-3">
                               <h4 className="text-xs font-bold text-[#3D3023]">Endereço de Entrega *</h4>
@@ -464,12 +531,12 @@
 
                     <div>
                       <label className="block text-xs font-semibold text-stone-600 mb-1">
-                        Selecione as Fotos ({usarMesmaFoto ? '1 foto para todos' : `${kitAtual.qtd} necessárias`})
+                        Selecione as Fotos ({usarMesmaFoto ? '1 foto para todos' : `${produtoAtual.qtd} necessária(s)`})
                       </label>
                       <div className="border-2 border-dashed border-[#D8C2A8] bg-[#FAF8F5] rounded-2xl p-4 text-center relative cursor-pointer">
                         <input 
                           type="file" 
-                          multiple={!usarMesmaFoto} 
+                          multiple={!usarMesmaFoto && produtoAtual.qtd > 1} 
                           required 
                           accept="image/*" 
                           onChange={(e) => setFotosUpload(Array.from(e.target.files))} 
@@ -481,34 +548,35 @@
                         </span>
                       </div>
 
-                      {/* CHECKBOX PARA USAR A MESMA FOTO */}
-                      <div className="mt-2.5 flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="mesmaFoto"
-                          checked={usarMesmaFoto}
-                          onChange={(e) => {
-                            setUsarMesmaFoto(e.target.checked);
-                            setFotosUpload([]); // Limpa as fotos ao alternar para evitar conflito na quantidade
-                          }}
-                          className="w-4 h-4 text-[#B89267] rounded border-stone-300 focus:ring-[#B89267] cursor-pointer"
-                        />
-                        <label htmlFor="mesmaFoto" className="text-xs text-stone-700 font-medium cursor-pointer select-none">
-                          Utilizar a mesma foto para todos os ímãs deste kit
-                        </label>
-                      </div>
+                      {produtoAtual.qtd > 1 && (
+                        <div className="mt-2.5 flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="mesmaFoto"
+                            checked={usarMesmaFoto}
+                            onChange={(e) => {
+                              setUsarMesmaFoto(e.target.checked);
+                              setFotosUpload([]);
+                            }}
+                            className="w-4 h-4 text-[#B89267] rounded border-stone-300 focus:ring-[#B89267] cursor-pointer"
+                          />
+                          <label htmlFor="mesmaFoto" className="text-xs text-stone-700 font-medium cursor-pointer select-none">
+                            Utilizar a mesma foto para todas as {produtoAtual.qtd} unidades
+                          </label>
+                        </div>
+                      )}
 
                       {fotosUpload.length > 0 && (
                         <div className={`mt-2 text-[11px] font-semibold ${quantidadeFotosValida ? 'text-emerald-700' : 'text-amber-700'}`}>
                           {quantidadeFotosValida 
-                            ? (usarMesmaFoto ? `✓ 1 foto selecionada (será aplicada em todos os ${kitAtual.qtd} ímãs)` : `✓ ${fotosUpload.length} foto(s) selecionada(s)`) 
-                            : (usarMesmaFoto ? `⚠ Selecione exatamente 1 foto.` : `⚠ Selecione exatamente ${kitAtual.qtd} fotos.`)}
+                            ? (usarMesmaFoto ? `✓ 1 foto selecionada (será aplicada em todas as ${produtoAtual.qtd} unidades)` : `✓ ${fotosUpload.length} foto(s) selecionada(s)`) 
+                            : (usarMesmaFoto ? `⚠ Selecione exatamente 1 foto.` : `⚠ Selecione exatamente ${produtoAtual.qtd} foto(s).`)}
                         </div>
                       )}
                     </div>
 
                     <div className="bg-[#FAF8F5] p-3 rounded-xl border border-[#E8DFC8] space-y-1 text-xs">
-                      <div className="flex justify-between text-stone-600"><span>Kit de Ímãs:</span><span>R$ {kitAtual.preco.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-stone-600"><span>Produto:</span><span>R$ {produtoAtual.preco.toFixed(2)}</span></div>
                       <div className="flex justify-between text-stone-600"><span>Frete ({freteSelecionado.nome}):</span><span>R$ {(freteSelecionado.valor || 0).toFixed(2)}</span></div>
                       <div className="flex justify-between items-center border-t border-stone-200 pt-2 font-extrabold text-sm text-[#8C6740]">
                         <span>Total Geral:</span>
