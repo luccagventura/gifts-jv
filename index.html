@@ -4,14 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JV Gifts Personalizados - Fazer Pedido</title>
-  <!-- React & React DOM -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <meta name="description" content="Ímãs, bottons, chaveiros e espelhos personalizados com a sua foto. Itapetininga/SP.">
+  <link rel="icon" href="./logo.jpg">
+  <!-- React & React DOM (build de produção, versão fixa) -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
   <!-- Babel compiler -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
   <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.10"></script>
   <!-- Fontes Google -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body {
@@ -24,7 +27,103 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect, useRef } = React;
+
+    const URL_DO_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbzIsGyzzoRPBsbyjYk0kKEAx0bQhP3_eXigJ1d1eNZWB6JoRAhbLUMM8sryJRy2wgmV/exec";
+    const WHATSAPP_LOJA = "5513997018999";
+    const VALOR_ENTREGA_LOCAL = 10;
+    const MAX_UNIDADES = 100;
+    const MAX_LADO_FOTO = 1200;
+
+    // Manter igual ao catálogo do Apps Script (Code.gs)
+    const PRODUTOS = [
+      { id: 'um-ima', nome: 'Ímã Quadrado', tipo: 'unitario', precoUnit: 12, pesoUnit: 100, desc: 'Ímã quadrado personalizado (50mm)' },
+      { id: 'tres-quadrado', nome: 'Kit 3 ímãs quadrados', tipo: 'kit', qtd: 3, preco: 35, peso: 200, desc: '3 ímãs quadrados personalizados (50mm)' },
+      { id: 'seis-quadrado', nome: 'Kit 6 ímãs quadrados', tipo: 'kit', qtd: 6, preco: 68, peso: 300, desc: '6 ímãs quadrados personalizados (50mm)' },
+      { id: 'dez-mais-quadrado', nome: 'Kit 10+ ímãs quadrados', tipo: 'atacado', min: 10, precoUnit: 10, pesoBase: 300, pesoExtra: 20, desc: 'A partir de 10 ímãs quadrados (50mm) – R$ 10,00 por unidade' },
+      { id: 'ima-redondo', nome: 'Ímã Redondo', tipo: 'unitario', precoUnit: 11, pesoUnit: 80, desc: 'Ímã redondo personalizado (58mm)' },
+      { id: 'botton', nome: 'Botton Personalizado', tipo: 'unitario', precoUnit: 8, pesoUnit: 50, desc: 'Botton personalizado com alfinete (58mm)' },
+      { id: 'chaveiro', nome: 'Chaveiro Personalizado', tipo: 'unitario', precoUnit: 9, pesoUnit: 60, desc: 'Chaveiro personalizado com foto/frase (58mm)' },
+      { id: 'espelho', nome: 'Espelho de Bolso', tipo: 'unitario', precoUnit: 10, pesoUnit: 80, desc: 'Espelho de bolso personalizado (58mm)' },
+    ];
+
+    const ENDERECO_VAZIO = { rua: '', numero: '', bairro: '', complemento: '', cidade: '', uf: '' };
+    const RETIRADA = { tipo: 'retirada', nome: 'Retirada no ateliê', valor: 0, prazo: 'Grátis' };
+    const ENTREGA_LOCAL = { tipo: 'local', nome: 'Entrega local', valor: VALOR_ENTREGA_LOCAL, prazo: 'A combinar' };
+
+    const brl = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const soDigitos = (s) => String(s || '').replace(/\D/g, '');
+
+    const mascaraCep = (v) => {
+      const d = soDigitos(v).slice(0, 8);
+      return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+    };
+
+    const mascaraWhats = (v) => {
+      const d = soDigitos(v).slice(0, 11);
+      if (d.length <= 2) return d;
+      if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+      if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+      return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    };
+
+    const ehItapetininga = (cep) => {
+      const d = soDigitos(cep);
+      if (d.length !== 8) return false;
+      const prefixo = parseInt(d.substring(0, 5), 10);
+      return prefixo >= 18200 && prefixo <= 18215;
+    };
+
+    const qtdPadrao = (p) => (p.tipo === 'kit' ? p.qtd : p.tipo === 'atacado' ? p.min : 1);
+
+    const calcularItem = (p, qtdInput) => {
+      const n = parseInt(qtdInput, 10);
+      if (p.tipo === 'kit') return { qtd: p.qtd, preco: p.preco, peso: p.peso };
+      if (p.tipo === 'atacado') {
+        const qtd = Math.min(MAX_UNIDADES, Math.max(p.min, n || p.min));
+        return { qtd, preco: qtd * p.precoUnit, peso: p.pesoBase + (qtd - p.min) * p.pesoExtra };
+      }
+      const qtd = Math.min(MAX_UNIDADES, Math.max(1, n || 1));
+      return { qtd, preco: qtd * p.precoUnit, peso: qtd * p.pesoUnit };
+    };
+
+    const chamarScript = async (payload) => {
+      const resposta = await fetch(URL_DO_APPS_SCRIPT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+      });
+      let dados;
+      try {
+        dados = await resposta.json();
+      } catch {
+        throw new Error('Resposta inválida do servidor. Tente novamente.');
+      }
+      if (dados.status !== 'sucesso') throw new Error(dados.mensagem || 'Erro no servidor.');
+      return dados;
+    };
+
+    const comprimirImagem = (file) => new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const escala = Math.min(1, MAX_LADO_FOTO / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * escala);
+        canvas.height = Math.round(img.height * escala);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error(`Não foi possível abrir "${file.name}". Envie em JPG ou PNG.`));
+      };
+      img.src = url;
+    });
 
     const UploadIcon = () => (
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
@@ -38,260 +137,210 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
     );
 
-    function App() {
-      const [carregando, setCarregando] = useState(false);
-      const [calculandoFrete, setCalculandoFrete] = useState(false);
+    const inputClasse = "w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#B89267]";
+    const inputPequenoClasse = "w-full px-3 py-2 rounded-xl border border-stone-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#B89267]";
 
-      const produtos = [
-        { id: 'um-ima', nome: 'Ímã Quadrado', categoria: 'Kits e Ímãs', qtdPadrao: 1, precoPadrao: 12.00, desc: 'Ímã quadrado personalizado (50mm)', peso: 100 },
-        { id: 'tres-quadrado', nome: 'Kit 3 ímãs quadrados', categoria: 'Kits e Ímãs', qtdPadrao: 3, precoPadrao: 35.00, desc: '3 ímãs quadrados personalizados (50mm)', peso: 200 },
-        { id: 'seis-quadrado', nome: 'Kit 6 ímãs quadrados', categoria: 'Kits e Ímãs', qtdPadrao: 6, precoPadrao: 68.00, desc: '6 ímãs quadrados personalizados (50mm)', peso: 300 },
-        { id: 'dez-mais-quadrado', nome: 'Kit 10+ ímãs quadrados', categoria: 'Kits e Ímãs', qtdPadrao: 10, precoPadrao: 100.00, desc: 'A partir de 10 ímãs quadrados (50mm) (R$ 10,00 por unidade)', peso: 400 },
-        
-        { id: 'ima-redondo', nome: 'Ímã Redondo (Unidade)', categoria: 'Outros Produtos', qtdPadrao: 1, precoPadrao: 11.00, desc: 'Ímã redondo personalizado (58mm)', peso: 80 },
-        { id: 'botton', nome: 'Botton Personalizado', categoria: 'Outros Produtos', qtdPadrao: 1, precoPadrao: 8.00, desc: 'Botton personalizado com alfinete (58mm)', peso: 50 },
-        { id: 'chaveiro', nome: 'Chaveiro Personalizado', categoria: 'Outros Produtos', qtdPadrao: 1, precoPadrao: 9.00, desc: 'Chaveiro personalizado com foto/frase (58mm)', peso: 60 },
-        { id: 'espelho', nome: 'Espelho de Bolsa', categoria: 'Outros Produtos', qtdPadrao: 1, precoPadrao: 10.00, desc: 'Espelho de bolso personalizado (58mm)', peso: 80 },
-      ];
+    function App() {
+      const [produtoId, setProdutoId] = useState('tres-quadrado');
+      const [qtdInput, setQtdInput] = useState('3');
 
       const [clienteNome, setClienteNome] = useState('');
       const [clienteWhats, setClienteWhats] = useState('');
-      const [produtoSelecionado, setProdutoSelecionado] = useState(produtos[1].id);
-      const [qtdCustomizada, setQtdCustomizada] = useState(10);
-      const [qtdIndividual, setQtdIndividual] = useState(1);
-      const [fotosUpload, setFotosUpload] = useState([]);
-      const [usarMesmaFoto, setUsarMesmaFoto] = useState(false);
-      const [pedidoSucesso, setPedidoSucesso] = useState(null);
-      const [erroEnvio, setErroEnvio] = useState(false);
+      const [honeypot, setHoneypot] = useState('');
 
-      const [cepDestino, setCepDestino] = useState('');
-      const [tipoEntrega, setTipoEntrega] = useState('local');
+      const [cep, setCep] = useState('');
+      const [erroCep, setErroCep] = useState('');
+      const [endereco, setEndereco] = useState(ENDERECO_VAZIO);
+      const [frete, setFrete] = useState(null);
       const [opcoesFrete, setOpcoesFrete] = useState([]);
-      const [freteSelecionado, setFreteSelecionado] = useState({ nome: 'Retirada na loja', valor: 0.00, prazo: 'Grátis' });
-      
-      const [rua, setRua] = useState('');
-      const [numero, setNumero] = useState('');
-      const [bairro, setBairro] = useState('');
-      const [complemento, setComplemento] = useState('');
+      const [calculandoFrete, setCalculandoFrete] = useState(false);
+      const [erroFrete, setErroFrete] = useState('');
+      const ultimoCepBuscado = useRef('');
 
-      const URL_DO_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbzIsGyzzoRPBsbyjYk0kKEAx0bQhP3_eXigJ1d1eNZWB6JoRAhbLUMM8sryJRy2wgmV/exec";
+      const [fotos, setFotos] = useState([]);
+      const [usarMesmaFoto, setUsarMesmaFoto] = useState(false);
+      const [processandoFotos, setProcessandoFotos] = useState(false);
+      const [erroFotos, setErroFotos] = useState('');
+      const [inputFotosKey, setInputFotosKey] = useState(0);
 
-      const obterDadosCalculados = () => {
-        const prodObj = produtos.find(p => p.id === produtoSelecionado);
-        if (produtoSelecionado === 'dez-mais-quadrado') {
-          const qtd = Math.max(10, parseInt(qtdCustomizada) || 10);
-          const preco = qtd * 10.00;
-          const peso = 300 + (qtd - 10) * 20;
-          return { ...prodObj, qtd, preco, peso };
-        }
-        if (['um-ima', 'ima-redondo', 'botton', 'chaveiro', 'espelho'].includes(produtoSelecionado)) {
-          const qtd = Math.max(1, parseInt(qtdIndividual) || 1);
-          const precoUnitario = produtoSelecionado === 'um-ima' ? 12.00 : produtoSelecionado === 'ima-redondo' ? 11.00 : produtoSelecionado === 'botton' ? 8.00 : produtoSelecionado === 'chaveiro' ? 9.00 : 10.00;
-          const pesoUnitario = produtoSelecionado === 'um-ima' ? 100 : produtoSelecionado === 'botton' ? 50 : produtoSelecionado === 'chaveiro' ? 60 : 80;
-          return { ...prodObj, qtd, preco: qtd * precoUnitario, peso: qtd * pesoUnitario };
-        }
-        return { ...prodObj, qtd: prodObj.qtdPadrao, preco: prodObj.precoPadrao, peso: prodObj.peso };
+      const [carregando, setCarregando] = useState(false);
+      const [erroEnvio, setErroEnvio] = useState('');
+      const [pedido, setPedido] = useState(null);
+
+      const produto = PRODUTOS.find((p) => p.id === produtoId);
+      const item = calcularItem(produto, qtdInput);
+      const mesmaFoto = usarMesmaFoto && item.qtd > 1;
+      const fotosEsperadas = mesmaFoto ? 1 : item.qtd;
+      const fotosOk = fotos.length === fotosEsperadas;
+      const cepCompleto = soDigitos(cep).length === 8;
+      const cepLocal = ehItapetininga(cep);
+      const exigeEndereco = !!frete && frete.tipo !== 'retirada';
+      const valorTotal = item.preco + (frete ? frete.valor : 0);
+
+      useEffect(() => {
+        setOpcoesFrete([]);
+        setFrete((f) => (f && f.tipo === 'correios' ? null : f));
+      }, [item.peso]);
+
+      const selecionarProduto = (p) => {
+        if (p.id === produtoId) return;
+        setProdutoId(p.id);
+        setQtdInput(String(qtdPadrao(p)));
+        setUsarMesmaFoto(false);
       };
 
-      const produtoAtual = obterDadosCalculados();
-      const quantidadeFotosValida = usarMesmaFoto ? fotosUpload.length === 1 : fotosUpload.length === produtoAtual.qtd;
-      const valorTotalGeral = produtoAtual.preco + (freteSelecionado.valor || 0);
-      const exigeEndereco = freteSelecionado.nome !== 'Retirada na loja';
-
-      const verificarSeEhItapetininga = (cep) => {
-        const apenasNum = cep.replace(/\D/g, '');
-        if (apenasNum.length !== 8) return false;
-        const prefixo = parseInt(apenasNum.substring(0, 5), 10);
-        return prefixo >= 18200 && prefixo <= 18215;
-      };
-
-      const handleCEPChange = (e) => {
-        const novoCep = e.target.value;
-        setCepDestino(novoCep);
-        const limpo = novoCep.replace(/\D/g, '');
-        if (limpo.length === 8) {
-          if (verificarSeEhItapetininga(limpo)) {
-            setTipoEntrega('local');
-            setOpcoesFrete([]);
-            setFreteSelecionado({ nome: 'Retirada na loja', valor: 0.00, prazo: 'Grátis' });
-          } else {
-            setTipoEntrega('correios');
-          }
-        }
-      };
-
-      const handleCalcularFreteCorreios = async () => {
-        const limpo = cepDestino.replace(/\D/g, '');
-        if (limpo.length < 8) {
-          alert("Digite um CEP válido.");
-          return;
-        }
-
-        setCalculandoFrete(true);
+      const buscarEndereco = async (cepDigitos) => {
+        ultimoCepBuscado.current = cepDigitos;
         try {
-          const resposta = await fetch(URL_DO_APPS_SCRIPT, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({
-              acao: "calcularFrete",
-              cepDestino: limpo,
-              pesoGramas: produtoAtual.peso
-            })
-          });
+          const r = await fetch(`https://viacep.com.br/ws/${cepDigitos}/json/`);
+          const j = await r.json();
+          if (ultimoCepBuscado.current !== cepDigitos) return;
+          if (j.erro) {
+            setErroCep('CEP não encontrado. Confira o número.');
+            return;
+          }
+          setEndereco((e) => ({
+            ...e,
+            rua: j.logradouro || e.rua,
+            bairro: j.bairro || e.bairro,
+            cidade: j.localidade || '',
+            uf: j.uf || '',
+          }));
+        } catch {}
+      };
 
-          const dados = await resposta.json();
-          if (Array.isArray(dados)) {
-            const formatados = dados.map(servico => ({
-              nome: servico.name,
-              valor: parseFloat(servico.price),
-              prazo: `${servico.delivery_time} dias úteis`
-            }));
-            setOpcoesFrete(formatados);
-            if (formatados.length > 0) setFreteSelecionado(formatados[0]);
+      const handleCepChange = (e) => {
+        const novo = mascaraCep(e.target.value);
+        setCep(novo);
+        setErroCep('');
+        setErroFrete('');
+        setOpcoesFrete([]);
+        const d = soDigitos(novo);
+        if (d.length === 8) {
+          setFrete(ehItapetininga(d) ? RETIRADA : null);
+          buscarEndereco(d);
+        } else {
+          setFrete(null);
+          ultimoCepBuscado.current = '';
+        }
+      };
+
+      const handleCalcularFrete = async () => {
+        setCalculandoFrete(true);
+        setErroFrete('');
+        try {
+          const dados = await chamarScript({
+            acao: 'calcularFrete',
+            cepDestino: soDigitos(cep),
+            produtoId,
+            qtd: item.qtd,
+          });
+          const opcoes = dados.opcoes || [];
+          setOpcoesFrete(opcoes);
+          if (opcoes.length === 0) {
+            setFrete(null);
+            setErroFrete('Nenhuma opção de envio disponível para este CEP. Fale com a gente no WhatsApp.');
           } else {
-            alert("Erro ao consultar o frete para este CEP.");
+            setFrete({ tipo: 'correios', servicoId: opcoes[0].id, ...opcoes[0] });
           }
         } catch (erro) {
-          console.error("Erro frete:", erro);
-          alert("Falha ao calcular o frete.");
+          console.error('Erro frete:', erro);
+          setErroFrete(erro.message || 'Falha ao calcular o frete.');
         } finally {
           setCalculandoFrete(false);
         }
       };
 
-      // Função de compressão automática para evitar travamentos
-      const comprimirEConverterBase64 = (file) => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              const MAX_WIDTH = 1200;
-              const MAX_HEIGHT = 1200;
-              let width = img.width;
-              let height = img.height;
+      const handleFotos = async (e) => {
+        const arquivos = Array.from(e.target.files || []);
+        setInputFotosKey((k) => k + 1);
+        if (arquivos.length === 0) return;
 
-              if (width > height) {
-                if (width > MAX_WIDTH) {
-                  height *= MAX_WIDTH / width;
-                  width = MAX_WIDTH;
-                }
-              } else {
-                if (height > MAX_HEIGHT) {
-                  width *= MAX_HEIGHT / height;
-                  height = MAX_HEIGHT;
-                }
-              }
-
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0, width, height);
-              
-              // Comprime para JPEG com 80% de qualidade (leve e perfeito)
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-              resolve(dataUrl);
-            };
-            img.onerror = (error) => reject(error);
-          };
-          reader.onerror = (error) => reject(error);
-        });
+        setProcessandoFotos(true);
+        setErroFotos('');
+        const novas = [];
+        for (const arquivo of arquivos) {
+          try {
+            novas.push({
+              id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+              nome: arquivo.name,
+              dados: await comprimirImagem(arquivo),
+            });
+          } catch (erro) {
+            setErroFotos(erro.message);
+          }
+        }
+        setFotos((atuais) => (mesmaFoto ? novas.slice(0, 1) : [...atuais, ...novas]));
+        setProcessandoFotos(false);
       };
+
+      const removerFoto = (id) => setFotos((atuais) => atuais.filter((f) => f.id !== id));
 
       const handleEnviarPedido = async (e) => {
         e.preventDefault();
-        if (!quantidadeFotosValida) {
-          if (usarMesmaFoto) {
-            alert("Por favor, selecione exatamente 1 foto.");
-          } else {
-            alert(`Por favor, selecione exatamente ${produtoAtual.qtd} foto(s).`);
-          }
-          return;
-        }
+        setErroEnvio('');
 
-        if (exigeEndereco && (!rua.trim() || !numero.trim() || !bairro.trim())) {
-          alert("Por favor, preencha o endereço completo para entrega.");
-          return;
+        if (clienteNome.trim().length < 3) return setErroEnvio('Informe seu nome completo.');
+        if (soDigitos(clienteWhats).length < 10) return setErroEnvio('Informe um WhatsApp válido com DDD.');
+        if (!cepCompleto) return setErroEnvio('Informe um CEP válido.');
+        if (!frete) return setErroEnvio(cepLocal ? 'Escolha retirada ou entrega.' : 'Clique em "Consultar frete" e escolha uma opção de envio.');
+        if (exigeEndereco && ['rua', 'numero', 'bairro', 'cidade', 'uf'].some((c) => !endereco[c].trim())) {
+          return setErroEnvio('Preencha o endereço completo para entrega.');
         }
+        if (!fotosOk) return setErroEnvio(`Selecione exatamente ${fotosEsperadas} foto(s).`);
 
         setCarregando(true);
-        setErroEnvio(false);
-        const novoId = `PED-${Math.floor(1000 + Math.random() * 9000)}`;
-        
-        const enderecoFormatado = exigeEndereco 
-          ? `${rua.trim()}, Nº ${numero.trim()} - ${bairro.trim()}${complemento ? ' (' + complemento.trim() + ')' : ''} - CEP: ${cepDestino}`
-          : 'Retirada no Ateliê (Sem entrega)';
-
-        const produtoDescricao = usarMesmaFoto 
-          ? `${produtoAtual.nome} (${produtoAtual.qtd} unidade(s) - Replicar mesma foto)` 
-          : `${produtoAtual.nome} (${produtoAtual.qtd} unidade(s))`;
-
-        const novoPedido = {
-          id: novoId,
-          cliente: clienteNome,
-          kit: produtoDescricao,
-          qtdFotos: fotosUpload.length,
-          valorTotal: valorTotalGeral,
-          freteInfo: `${freteSelecionado.nome} (R$ ${freteSelecionado.valor.toFixed(2)})`,
-          whatsapp: clienteWhats,
-          endereco: enderecoFormatado
-        };
-
         try {
-          const fotosProcessadas = [];
-          
-          // Processa e comprime cada imagem selecionada de forma leve
-          for (let i = 0; i < fotosUpload.length; i++) {
-            const base64Otimizado = await comprimirEConverterBase64(fotosUpload[i]);
-            fotosProcessadas.push({
-              nome: fotosUpload[i].name || `foto_${i + 1}.jpg`,
-              tipo: 'image/jpeg',
-              dados: base64Otimizado
-            });
-          }
-
-          const payload = {
-            idPedido: novoId,
-            nomeCliente: clienteNome,
-            whatsapp: clienteWhats,
-            kit: novoPedido.kit,
-            valorTotal: valorTotalGeral,
-            freteInfo: novoPedido.freteInfo,
-            endereco: enderecoFormatado,
-            usarMesmaFoto: usarMesmaFoto,
-            qtdTotal: produtoAtual.qtd,
-            fotos: fotosProcessadas
-          };
-
-          const resposta = await fetch(URL_DO_APPS_SCRIPT, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify(payload)
+          const r = await chamarScript({
+            site: honeypot,
+            nomeCliente: clienteNome.trim(),
+            whatsapp: soDigitos(clienteWhats),
+            cep: soDigitos(cep),
+            produtoId,
+            qtd: item.qtd,
+            usarMesmaFoto: mesmaFoto,
+            frete: { tipo: frete.tipo, servicoId: frete.servicoId },
+            endereco: exigeEndereco ? endereco : null,
+            fotos: fotos.map((f) => ({ nome: f.nome, dados: f.dados })),
           });
 
-          if (!resposta.ok) throw new Error("Erro no envio");
-
-          setPedidoSucesso(novoPedido);
+          setPedido({
+            id: r.idPedido,
+            cliente: clienteNome.trim(),
+            produto: r.produto,
+            freteInfo: r.freteInfo,
+            valorFrete: r.valorFrete,
+            endereco: r.endereco,
+            valorTotal: r.valorTotal,
+          });
           setClienteNome('');
           setClienteWhats('');
-          setRua('');
-          setNumero('');
-          setBairro('');
-          setComplemento('');
-          setFotosUpload([]);
+          setCep('');
+          setEndereco(ENDERECO_VAZIO);
+          setFrete(null);
+          setOpcoesFrete([]);
+          setFotos([]);
           setUsarMesmaFoto(false);
-          setQtdIndividual(1);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (erro) {
-          console.error("Erro no envio do pedido:", erro);
-          alert("Ocorreu um erro ao enviar o pedido. Por favor, tente novamente.");
-          setErroEnvio(true);
+          console.error('Erro no envio do pedido:', erro);
+          setErroEnvio(erro.message || 'Ocorreu um erro ao enviar o pedido. Tente novamente.');
         } finally {
           setCarregando(false);
         }
       };
+
+      const mensagemWhats = pedido && encodeURIComponent(
+        `Olá! Fiz o pedido ${pedido.id}.\n\n` +
+        `*Cliente:* ${pedido.cliente}\n` +
+        `*Produto:* ${pedido.produto}\n` +
+        `*Entrega:* ${pedido.freteInfo} - ${brl(pedido.valorFrete)}\n` +
+        `*Endereço:* ${pedido.endereco}\n` +
+        `*Total:* ${brl(pedido.valorTotal)}\n\n` +
+        `Poderia me enviar o link de pagamento do Nubank?`
+      );
+
+      const podeEnviar = !carregando && !processandoFotos && fotosOk && !!frete;
 
       return (
         <div className="min-h-screen flex flex-col justify-between">
@@ -300,29 +349,36 @@
               <div className="w-14 h-14 rounded-xl shadow-md border-2 border-white/40 flex-shrink-0 overflow-hidden">
                 <img src="./logo.jpg" alt="Logo JV Gifts" className="w-full h-full object-cover" />
               </div>
-              <div>
-                <h1 className="text-2xl font-extrabold tracking-wide">JV Gifts Personalizados</h1>
-              </div>
+              <h1 className="text-2xl font-extrabold tracking-wide">JV Gifts Personalizados</h1>
             </div>
           </header>
 
           <main className="max-w-4xl mx-auto px-4 py-8 flex-grow w-full">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              
+
               <div className="md:col-span-2 space-y-6">
                 <h2 className="text-2xl font-bold text-[#4A3B2C]">Escolha o seu Produto Personalizado</h2>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {produtos.map((p) => {
-                    const estaSelecionado = produtoSelecionado === p.id;
-                    const ehDezMais = p.id === 'dez-mais-quadrado';
-                    const ehIndividualVariavel = ['um-ima', 'ima-redondo', 'botton', 'chaveiro', 'espelho'].includes(p.id);
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" role="radiogroup" aria-label="Produtos">
+                  {PRODUTOS.map((p) => {
+                    const estaSelecionado = produtoId === p.id;
+                    const qtdVariavel = p.tipo !== 'kit';
 
                     return (
                       <div
                         key={p.id}
-                        onClick={() => setProdutoSelecionado(p.id)}
-                        className={`cursor-pointer rounded-2xl p-5 border-2 transition-all relative flex flex-col justify-between ${
+                        role="radio"
+                        aria-checked={estaSelecionado}
+                        tabIndex={0}
+                        onClick={() => selecionarProduto(p)}
+                        onKeyDown={(e) => {
+                          if (e.target !== e.currentTarget) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            selecionarProduto(p);
+                          }
+                        }}
+                        className={`cursor-pointer rounded-2xl p-5 border-2 transition-all relative flex flex-col justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B89267] ${
                           estaSelecionado ? 'border-[#B89267] bg-[#F4EFEA] shadow-sm ring-1 ring-[#D8C2A8]' : 'border-stone-200 bg-white hover:border-stone-300'
                         }`}
                       >
@@ -331,43 +387,39 @@
                           <h3 className="font-bold text-[#3D3023] text-lg pr-16">{p.nome}</h3>
                           <p className="text-xs text-stone-500 mt-1">{p.desc}</p>
                         </div>
-                        
-                        {ehDezMais && estaSelecionado ? (
+
+                        {qtdVariavel && estaSelecionado ? (
                           <div className="mt-4 pt-3 border-t border-[#D8C2A8]/60" onClick={(e) => e.stopPropagation()}>
-                            <label className="block text-xs font-bold text-[#4A3B2C] mb-1">Quantidade de ímãs:</label>
-                            <input 
-                              type="number" 
-                              min="10" 
-                              value={qtdCustomizada} 
-                              onChange={(e) => setQtdCustomizada(e.target.value)} 
-                              className="w-full px-3 py-1.5 rounded-lg border border-[#C5B097] text-sm font-bold bg-white" 
+                            <label htmlFor={`qtd-${p.id}`} className="block text-xs font-bold text-[#4A3B2C] mb-1">
+                              {p.tipo === 'atacado' ? 'Quantidade de ímãs:' : 'Quantidade:'}
+                            </label>
+                            <input
+                              id={`qtd-${p.id}`}
+                              type="number"
+                              inputMode="numeric"
+                              min={p.tipo === 'atacado' ? p.min : 1}
+                              max={MAX_UNIDADES}
+                              value={qtdInput}
+                              onChange={(e) => setQtdInput(e.target.value)}
+                              onBlur={() => setQtdInput(String(item.qtd))}
+                              className="w-full px-3 py-1.5 rounded-lg border border-[#C5B097] text-sm font-bold bg-white"
                             />
                             <div className="mt-2 flex justify-between items-baseline">
-                              <span className="text-xs font-semibold text-[#8C6740]">{produtoAtual.qtd} ímãs</span>
-                              <span className="text-xl font-extrabold text-[#3D3023]">R$ {produtoAtual.preco.toFixed(2)}</span>
+                              <span className="text-xs font-semibold text-[#8C6740]">{item.qtd} unidade(s)</span>
+                              <span className="text-xl font-extrabold text-[#3D3023]">{brl(item.preco)}</span>
                             </div>
-                          </div>
-                        ) : ehIndividualVariavel && estaSelecionado ? (
-                          <div className="mt-4 pt-3 border-t border-[#D8C2A8]/60" onClick={(e) => e.stopPropagation()}>
-                            <label className="block text-xs font-bold text-[#4A3B2C] mb-1">Quantidade:</label>
-                            <input 
-                              type="number" 
-                              min="1" 
-                              value={qtdIndividual} 
-                              onChange={(e) => setQtdIndividual(e.target.value)} 
-                              className="w-full px-3 py-1.5 rounded-lg border border-[#C5B097] text-sm font-bold bg-white" 
-                            />
-                            <div className="mt-2 flex justify-between items-baseline">
-                              <span className="text-xs font-semibold text-[#8C6740]">{produtoAtual.qtd} unidade(s)</span>
-                              <span className="text-xl font-extrabold text-[#3D3023]">R$ {produtoAtual.preco.toFixed(2)}</span>
-                            </div>
+                            {item.qtd === MAX_UNIDADES && (
+                              <p className="mt-1 text-[11px] text-stone-500">Acima de {MAX_UNIDADES} unidades, fale com a gente no WhatsApp.</p>
+                            )}
                           </div>
                         ) : (
                           <div className="mt-4 flex justify-between items-baseline">
                             <span className="text-xs font-medium text-[#8C6740] bg-[#ECE5DB] px-2.5 py-1 rounded-lg">
-                              {p.qtdPadrao} {p.qtdPadrao === 1 ? 'unidade' : 'fotos'}
+                              {p.tipo === 'kit' ? `${p.qtd} fotos` : p.tipo === 'atacado' ? `a partir de ${p.min}` : 'unidade'}
                             </span>
-                            <span className="text-xl font-extrabold text-[#3D3023]">R$ {p.precoPadrao.toFixed(2)}</span>
+                            <span className="text-xl font-extrabold text-[#3D3023]">
+                              {brl(p.tipo === 'kit' ? p.preco : p.tipo === 'atacado' ? p.min * p.precoUnit : p.precoUnit)}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -377,72 +429,94 @@
               </div>
 
               {/* FORMULÁRIO */}
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-5">
+              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-5 self-start">
                 <h3 className="text-lg font-bold text-[#3D3023] border-b border-stone-100 pb-3">Dados do Pedido</h3>
 
-                {pedidoSucesso ? (
+                {pedido ? (
                   <div className="bg-[#FAF8F5] border border-[#D8C2A8] rounded-2xl p-5 text-center space-y-4 shadow-sm">
-                    <h4 className="font-bold text-[#3D3023] text-base">Pedido Registado com Sucesso!</h4>
+                    <h4 className="font-bold text-[#3D3023] text-base">Pedido registrado com sucesso!</h4>
                     <div className="text-xs text-stone-600 text-left bg-white p-3 rounded-xl border border-stone-200 space-y-1.5">
-                      <p><strong>Código:</strong> <span className="text-stone-800">{pedidoSucesso.id}</span></p>
-                      <p><strong>Produto:</strong> {pedidoSucesso.kit}</p>
-                      <p><strong>Opção de Entrega:</strong> {pedidoSucesso.freteInfo}</p>
-                      <p><strong>Endereço:</strong> {pedidoSucesso.endereco}</p>
-                      <p className="pt-1 border-t border-stone-100"><strong>Total Geral:</strong> <span className="text-[#8C6740] font-bold">R$ {pedidoSucesso.valorTotal.toFixed(2)}</span></p>
+                      <p><strong>Código:</strong> <span className="text-stone-800">{pedido.id}</span></p>
+                      <p><strong>Produto:</strong> {pedido.produto}</p>
+                      <p><strong>Entrega:</strong> {pedido.freteInfo} – {brl(pedido.valorFrete)}</p>
+                      <p><strong>Endereço:</strong> {pedido.endereco}</p>
+                      <p className="pt-1 border-t border-stone-100"><strong>Total:</strong> <span className="text-[#8C6740] font-bold">{brl(pedido.valorTotal)}</span></p>
                     </div>
+                    <p className="text-[11px] text-stone-500">Último passo: envie o pedido no WhatsApp para receber o link de pagamento.</p>
                     <a
-                      href={`https://wa.me/5513997018999?text=${encodeURIComponent(`Olá! Fiz o pedido ${pedidoSucesso.id}.\n\n*Cliente:* ${pedidoSucesso.cliente}\n*Produto:* ${pedidoSucesso.kit}\n*Entrega:* ${pedidoSucesso.freteInfo}\n*Endereço:* ${pedidoSucesso.endereco}\n*Total:* R$ ${pedidoSucesso.valorTotal.toFixed(2)}\n\nPoderia me enviar o link de pagamento do Nubank?`)}`}
+                      href={`https://wa.me/${WHATSAPP_LOJA}?text=${mensagemWhats}`}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-block w-full py-3.5 bg-[#B89267] text-white rounded-xl font-bold text-xs hover:bg-[#A37B50] transition shadow-sm"
                     >
                       Enviar no WhatsApp (Nubank)
                     </a>
+                    <button
+                      type="button"
+                      onClick={() => setPedido(null)}
+                      className="w-full py-2.5 rounded-xl border border-[#D8C2A8] text-[#8C6740] font-bold text-xs hover:bg-[#F4EFEA] transition"
+                    >
+                      Fazer novo pedido
+                    </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleEnviarPedido} className="space-y-4">
+                  <form onSubmit={handleEnviarPedido} className="space-y-4" noValidate>
+                    <input
+                      type="text"
+                      name="site"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      value={honeypot}
+                      onChange={(e) => setHoneypot(e.target.value)}
+                      className="hidden"
+                    />
+
                     <div>
-                      <label className="block text-xs font-semibold text-stone-600 mb-1">Nome Completo</label>
-                      <input type="text" required placeholder="Ex: Ana Souza" value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#B89267]" />
+                      <label htmlFor="nome" className="block text-xs font-semibold text-stone-600 mb-1">Nome completo</label>
+                      <input id="nome" type="text" autoComplete="name" required placeholder="Ex: Ana Souza" value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} className={inputClasse} />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-stone-600 mb-1">WhatsApp de Contato</label>
-                      <input type="tel" required placeholder="(15) 99999-9999" value={clienteWhats} onChange={(e) => setClienteWhats(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#B89267]" />
+                      <label htmlFor="whats" className="block text-xs font-semibold text-stone-600 mb-1">WhatsApp de contato</label>
+                      <input id="whats" type="tel" autoComplete="tel-national" inputMode="numeric" required placeholder="(15) 99999-9999" value={clienteWhats} onChange={(e) => setClienteWhats(mascaraWhats(e.target.value))} className={inputClasse} />
                     </div>
 
-                    {/* CAMPO DE CEP E LÓGICA CONDICIONAL DE FRETE */}
+                    {/* CEP E FRETE */}
                     <div>
-                      <label className="block text-xs font-semibold text-stone-600 mb-1">CEP de Destino</label>
+                      <label htmlFor="cep" className="block text-xs font-semibold text-stone-600 mb-1">CEP de destino</label>
                       <input
+                        id="cep"
                         type="text"
-                        maxLength="9"
+                        inputMode="numeric"
+                        autoComplete="postal-code"
                         required
                         placeholder="Ex: 18200-000"
-                        value={cepDestino}
-                        onChange={handleCEPChange}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#B89267]"
+                        value={cep}
+                        onChange={handleCepChange}
+                        className={inputClasse}
                       />
+                      {erroCep && <p className="mt-1 text-[11px] font-semibold text-amber-700">{erroCep}</p>}
 
-                      {cepDestino.replace(/\D/g, '').length === 8 && (
+                      {cepCompleto && (
                         <div className="mt-2.5 space-y-3">
-                          {tipoEntrega === 'local' ? (
+                          {cepLocal ? (
                             <div className="bg-[#F4EFEA] border border-[#D8C2A8] p-3 rounded-xl text-xs space-y-2">
-                              <p className="font-bold text-[#3D3023]">📍 Itapetininga/SP (Entrega local)</p>
+                              <p className="font-bold text-[#3D3023]">📍 Itapetininga/SP</p>
                               <div className="flex gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => setFreteSelecionado({ nome: 'Retirada na loja', valor: 0.00, prazo: 'Grátis' })}
-                                  className={`flex-1 p-2 rounded-lg border text-center transition ${freteSelecionado.nome.includes('Retirada') ? 'bg-[#B89267] text-white font-bold' : 'bg-white text-stone-700'}`}
+                                  onClick={() => setFrete(RETIRADA)}
+                                  className={`flex-1 p-2 rounded-lg border text-center transition ${frete?.tipo === 'retirada' ? 'bg-[#B89267] text-white font-bold' : 'bg-white text-stone-700'}`}
                                 >
-                                  Retirada (Grátis)
+                                  Retirada (grátis)
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => setFreteSelecionado({ nome: 'Entrega Local', valor: 10.00, prazo: 'A combinar' })}
-                                  className={`flex-1 p-2 rounded-lg border text-center transition ${freteSelecionado.nome.includes('Entrega') ? 'bg-[#B89267] text-white font-bold' : 'bg-white text-stone-700'}`}
+                                  onClick={() => setFrete(ENTREGA_LOCAL)}
+                                  className={`flex-1 p-2 rounded-lg border text-center transition ${frete?.tipo === 'local' ? 'bg-[#B89267] text-white font-bold' : 'bg-white text-stone-700'}`}
                                 >
-                                  Entrega (R$ 10,00)
+                                  Entrega ({brl(VALOR_ENTREGA_LOCAL)})
                                 </button>
                               </div>
                             </div>
@@ -450,144 +524,144 @@
                             <div className="space-y-2 pt-1">
                               <button
                                 type="button"
-                                onClick={handleCalcularFreteCorreios}
+                                onClick={handleCalcularFrete}
                                 disabled={calculandoFrete}
-                                className="w-full py-2 bg-[#8C6740] text-white rounded-xl font-bold text-xs hover:bg-[#725232] transition"
+                                className="w-full py-2 bg-[#8C6740] text-white rounded-xl font-bold text-xs hover:bg-[#725232] transition disabled:opacity-60"
                               >
-                                {calculandoFrete ? "Calculando frete..." : "Consultar Frete"}
+                                {calculandoFrete ? 'Calculando frete...' : opcoesFrete.length > 0 ? 'Recalcular frete' : 'Consultar frete'}
                               </button>
+                              {erroFrete && <p className="text-[11px] font-semibold text-amber-700">{erroFrete}</p>}
 
                               {opcoesFrete.length > 0 && (
-                                <div className="space-y-1.5">
-                                  {opcoesFrete.map((op, idx) => (
-                                    <div
-                                      key={idx}
-                                      onClick={() => setFreteSelecionado(op)}
-                                      className={`p-2.5 rounded-xl border text-xs cursor-pointer flex justify-between items-center transition ${
-                                        freteSelecionado.nome === op.nome ? 'border-[#B89267] bg-[#F4EFEA] font-bold' : 'border-stone-200 bg-white'
-                                      }`}
-                                    >
-                                      <span>{op.nome} ({op.prazo})</span>
-                                      <span className="font-extrabold text-[#8C6740]">R$ {op.valor.toFixed(2)}</span>
-                                    </div>
-                                  ))}
+                                <div className="space-y-1.5" role="radiogroup" aria-label="Opções de envio">
+                                  {opcoesFrete.map((op) => {
+                                    const ativo = frete?.tipo === 'correios' && String(frete.servicoId) === String(op.id);
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={op.id}
+                                        role="radio"
+                                        aria-checked={ativo}
+                                        onClick={() => setFrete({ tipo: 'correios', servicoId: op.id, ...op })}
+                                        className={`w-full p-2.5 rounded-xl border text-xs text-left flex justify-between items-center transition ${
+                                          ativo ? 'border-[#B89267] bg-[#F4EFEA] font-bold' : 'border-stone-200 bg-white'
+                                        }`}
+                                      >
+                                        <span>{op.nome} ({op.prazo})</span>
+                                        <span className="font-extrabold text-[#8C6740]">{brl(op.valor)}</span>
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
                           )}
 
                           {exigeEndereco && (
-                            <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 space-y-2.5 pt-3">
-                              <h4 className="text-xs font-bold text-[#3D3023]">Endereço de Entrega *</h4>
-                              
-                              <div>
-                                <input
-                                  type="text"
-                                  required
-                                  placeholder="Rua / Avenida *"
-                                  value={rua}
-                                  onChange={(e) => setRua(e.target.value)}
-                                  className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#B89267]"
-                                />
-                              </div>
-
+                            <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 space-y-2.5">
+                              <h4 className="text-xs font-bold text-[#3D3023]">Endereço de entrega *</h4>
+                              <input type="text" required aria-label="Rua" placeholder="Rua / Avenida *" autoComplete="address-line1" value={endereco.rua} onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })} className={inputPequenoClasse} />
                               <div className="grid grid-cols-2 gap-2">
-                                <input
-                                  type="text"
-                                  required
-                                  placeholder="Número *"
-                                  value={numero}
-                                  onChange={(e) => setNumero(e.target.value)}
-                                  className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#B89267]"
-                                />
-                                <input
-                                  type="text"
-                                  required
-                                  placeholder="Bairro *"
-                                  value={bairro}
-                                  onChange={(e) => setBairro(e.target.value)}
-                                  className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#B89267]"
-                                />
+                                <input type="text" required aria-label="Número" placeholder="Número *" value={endereco.numero} onChange={(e) => setEndereco({ ...endereco, numero: e.target.value })} className={inputPequenoClasse} />
+                                <input type="text" required aria-label="Bairro" placeholder="Bairro *" value={endereco.bairro} onChange={(e) => setEndereco({ ...endereco, bairro: e.target.value })} className={inputPequenoClasse} />
                               </div>
-
-                              <div>
-                                <input
-                                  type="text"
-                                  placeholder="Complemento / Ponto de Ref. (Opcional)"
-                                  value={complemento}
-                                  onChange={(e) => setComplemento(e.target.value)}
-                                  className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#B89267]"
-                                />
+                              <div className="grid grid-cols-[1fr_4rem] gap-2">
+                                <input type="text" required aria-label="Cidade" placeholder="Cidade *" autoComplete="address-level2" value={endereco.cidade} onChange={(e) => setEndereco({ ...endereco, cidade: e.target.value })} className={inputPequenoClasse} />
+                                <input type="text" required aria-label="UF" placeholder="UF *" maxLength={2} autoComplete="address-level1" value={endereco.uf} onChange={(e) => setEndereco({ ...endereco, uf: e.target.value.toUpperCase() })} className={inputPequenoClasse} />
                               </div>
+                              <input type="text" aria-label="Complemento" placeholder="Complemento / Ponto de referência (opcional)" autoComplete="address-line2" value={endereco.complemento} onChange={(e) => setEndereco({ ...endereco, complemento: e.target.value })} className={inputPequenoClasse} />
                             </div>
                           )}
                         </div>
                       )}
                     </div>
 
+                    {/* FOTOS */}
                     <div>
-                      <label className="block text-xs font-semibold text-stone-600 mb-1">
-                        Selecione as Fotos ({usarMesmaFoto ? '1 foto para todos' : `${produtoAtual.qtd} necessária(s)`})
+                      <label htmlFor="fotos" className="block text-xs font-semibold text-stone-600 mb-1">
+                        Fotos ({mesmaFoto ? '1 foto para todas as unidades' : `${item.qtd} necessária(s)`})
                       </label>
                       <div className="border-2 border-dashed border-[#D8C2A8] bg-[#FAF8F5] rounded-2xl p-4 text-center relative cursor-pointer">
-                        <input 
-                          type="file" 
-                          multiple={!usarMesmaFoto && produtoAtual.qtd > 1} 
-                          required 
-                          accept="image/*" 
-                          onChange={(e) => setFotosUpload(Array.from(e.target.files))} 
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                        <input
+                          id="fotos"
+                          key={inputFotosKey}
+                          type="file"
+                          multiple={!mesmaFoto && item.qtd > 1}
+                          accept="image/jpeg,image/png,image/webp,image/heic,image/*"
+                          onChange={handleFotos}
+                          disabled={processandoFotos}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
                         <div className="text-[#B89267] mx-auto w-8 h-8 mb-1 flex justify-center items-center"><UploadIcon /></div>
                         <span className="text-xs text-stone-700 font-medium block">
-                          {usarMesmaFoto ? "Clique para carregar 1 foto" : "Clique para carregar imagens"}
+                          {processandoFotos ? 'Processando fotos...' : mesmaFoto ? 'Clique para carregar 1 foto' : 'Clique para carregar imagens'}
                         </span>
                       </div>
 
-                      {produtoAtual.qtd > 1 && (
+                      {item.qtd > 1 && (
                         <div className="mt-2.5 flex items-center gap-2">
                           <input
                             type="checkbox"
                             id="mesmaFoto"
                             checked={usarMesmaFoto}
                             onChange={(e) => {
-                              setUsarMesmaFoto(e.target.checked);
-                              setFotosUpload([]);
+                              const marcado = e.target.checked;
+                              setUsarMesmaFoto(marcado);
+                              if (marcado && fotos.length > 1) {
+                                setFotos((f) => f.slice(0, 1));
+                              }
                             }}
                             className="w-4 h-4 text-[#B89267] rounded border-stone-300 focus:ring-[#B89267] cursor-pointer"
                           />
                           <label htmlFor="mesmaFoto" className="text-xs text-stone-700 font-medium cursor-pointer select-none">
-                            Utilizar a mesma foto para todas as {produtoAtual.qtd} unidades
+                            Utilizar a mesma foto para todas as {item.qtd} unidades
                           </label>
                         </div>
                       )}
 
-                      {fotosUpload.length > 0 && (
-                        <div className={`mt-2 text-[11px] font-semibold ${quantidadeFotosValida ? 'text-emerald-700' : 'text-amber-700'}`}>
-                          {quantidadeFotosValida 
-                            ? (usarMesmaFoto ? `✓ 1 foto selecionada (será aplicada em todas as ${produtoAtual.qtd} unidades)` : `✓ ${fotosUpload.length} foto(s) selecionada(s)`) 
-                            : (usarMesmaFoto ? `⚠ Selecione exatamente 1 foto.` : `⚠ Selecione exatamente ${produtoAtual.qtd} foto(s).`)}
+                      {erroFotos && <p className="mt-1 text-[11px] font-semibold text-amber-700">{erroFotos}</p>}
+
+                      {fotos.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          <p className={`text-[11px] font-semibold ${fotosOk ? 'text-emerald-700' : 'text-amber-700'}`}>
+                            {fotosOk ? `✓ ${fotos.length} foto(s) carregada(s)` : `⚠ Faltam foto(s). Selecionadas: ${fotos.length} de ${fotosEsperadas}`}
+                          </p>
+                          <ul className="text-[10px] text-stone-500 max-h-24 overflow-y-auto space-y-0.5 bg-stone-50 p-2 rounded-xl border border-stone-200">
+                            {fotos.map((f, idx) => (
+                              <li key={f.id} className="flex justify-between items-center">
+                                <span className="truncate max-w-[200px]">{idx + 1}. {f.nome}</span>
+                                <button type="button" onClick={() => removerFoto(f.id)} className="text-red-600 hover:underline ml-2 font-bold">Remover</button>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       )}
                     </div>
 
+                    {/* RESUMO */}
                     <div className="bg-[#FAF8F5] p-3 rounded-xl border border-[#E8DFC8] space-y-1 text-xs">
-                      <div className="flex justify-between text-stone-600"><span>Produto:</span><span>R$ {produtoAtual.preco.toFixed(2)}</span></div>
-                      <div className="flex justify-between text-stone-600"><span>Frete ({freteSelecionado.nome}):</span><span>R$ {(freteSelecionado.valor || 0).toFixed(2)}</span></div>
+                      <div className="flex justify-between text-stone-600"><span>Produto:</span><span>{brl(item.preco)}</span></div>
+                      <div className="flex justify-between text-stone-600"><span>Frete ({frete?.nome || 'não selecionado'}):</span><span>{frete ? brl(frete.valor) : '–'}</span></div>
                       <div className="flex justify-between items-center border-t border-stone-200 pt-2 font-extrabold text-sm text-[#8C6740]">
                         <span>Total Geral:</span>
-                        <span>R$ {valorTotalGeral.toFixed(2)}</span>
+                        <span>{brl(valorTotal)}</span>
                       </div>
                     </div>
 
+                    {erroEnvio && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs font-semibold">
+                        {erroEnvio}
+                      </div>
+                    )}
+
                     <button
                       type="submit"
-                      disabled={carregando || !quantidadeFotosValida}
+                      disabled={!podeEnviar}
                       className={`w-full py-3.5 rounded-xl font-bold text-sm shadow-md transition ${
-                        carregando || !quantidadeFotosValida ? 'bg-stone-200 text-stone-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#B89267] to-[#8C6740] text-white hover:opacity-95'
+                        !podeEnviar ? 'bg-stone-200 text-stone-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#B89267] to-[#8C6740] text-white hover:opacity-95'
                       }`}
                     >
-                      {carregando ? "A enviar..." : "Concluir Pedido"}
+                      {carregando ? 'Enviando pedido...' : processandoFotos ? 'Processando imagens...' : 'Concluir Pedido'}
                     </button>
                   </form>
                 )}
@@ -599,7 +673,7 @@
           <footer className="bg-white border-t border-stone-200 py-6 text-center text-xs text-stone-500 space-y-3">
             <div className="flex justify-center items-center space-x-4">
               <a href="https://www.instagram.com/gifts.jv" target="_blank" rel="noreferrer" className="w-9 h-9 bg-[#F4EFEA] hover:bg-[#EAE0D5] text-[#8C6740] rounded-full flex items-center justify-center transition"><InstagramIcon /></a>
-              <a href="https://wa.me/5513997018999" target="_blank" rel="noreferrer" className="w-9 h-9 bg-[#F4EFEA] hover:bg-[#EAE0D5] text-[#8C6740] rounded-full flex items-center justify-center transition"><WhatsappIcon /></a>
+              <a href={`https://wa.me/${WHATSAPP_LOJA}`} target="_blank" rel="noreferrer" className="w-9 h-9 bg-[#F4EFEA] hover:bg-[#EAE0D5] text-[#8C6740] rounded-full flex items-center justify-center transition"><WhatsappIcon /></a>
             </div>
             <p className="font-medium text-stone-600">JV Gifts Personalizados • Itapetininga/SP</p>
           </footer>
